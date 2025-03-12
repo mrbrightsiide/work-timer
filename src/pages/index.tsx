@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import { useLocalStorage } from '@/hooks';
 
 const Home = () => {
@@ -8,7 +8,7 @@ const Home = () => {
   const [arrivalTime, setArrivalTime] = useState('');
   const [lunchHours, setLunchHours] = useState(0); // Hours
   const [lunchMinutes, setLunchMinutes] = useState(0); // Minutes
-  const [leaveTime, setLeaveTime] = useState('');
+  const [leaveTime, setLeaveTime] = useState<Dayjs | null>(null);
   const [launchInclude, setLaunchInclude] = useState(true);
   const [localTotalWorkTime, setLocalTotalWorkTime] = useLocalStorage(
     'totalWorkTime',
@@ -20,6 +20,8 @@ const Home = () => {
   );
 
   const today = dayjs().format('YYYY-MM-DD');
+
+  const isAfterLeaveTime = dayjs().isAfter(leaveTime);
 
   const renderWorkTimeInput = (): React.ReactNode => {
     return (
@@ -94,14 +96,14 @@ const Home = () => {
     );
   };
 
-  useEffect(() => {
-    console.log(workHours);
-    console.log(workMinutes);
-  }, [workHours, workMinutes]);
+  // useEffect(() => {
+  //   console.log(workHours);
+  //   console.log(workMinutes);
+  // }, [workHours, workMinutes]);
 
   useEffect(() => {
-    console.log(localTotalWorkTime);
-    console.log(localTotalLaunchTime);
+    // console.log(localTotalWorkTime);
+    // console.log(localTotalLaunchTime);
     if (localTotalWorkTime) {
       setWorkHours(
         localTotalWorkTime ? Number(localTotalWorkTime.split(':')[0]) : 0
@@ -129,14 +131,24 @@ const Home = () => {
       ? arrival.add(totalWorkHours, 'hour').add(totalLunchHours, 'hour')
       : arrival.add(totalWorkHours, 'hour');
 
-    return setLeaveTime(
-      leaveTime.format('A HH:mm').replace('AM', '오전').replace('PM', '오후')
-    );
+    return setLeaveTime(leaveTime);
   };
 
   useEffect(() => {
     if (arrivalTime && (workHours || workMinutes)) calculateLeaveTime();
   }, [arrivalTime, workHours, workMinutes, launchInclude]);
+
+  // log dayjs(leaveTime).diff(dayjs(arrivalTime)
+  useEffect(() => {
+    // console.log(leaveTime);
+    // console.log(arrivalTime);
+    // console.log(dayjs(arrivalTime).format('YYYY-MM-DD HH:mm'));
+    console.log(
+      dayjs(leaveTime).diff(
+        dayjs(`${today} ${arrivalTime}`, 'YYYY-MM-DD HH:mm')
+      )
+    );
+  }, [leaveTime, arrivalTime]);
 
   return (
     <div className='flex flex-col items-center justify-center min-h-screen bg-white p-4'>
@@ -183,14 +195,37 @@ const Home = () => {
         {/* </div> */}
       </div>
       {/* 퇴근시간 */}
-      {arrivalTime && (workHours || workMinutes) ? (
+      {arrivalTime && leaveTime && (workHours || workMinutes) ? (
         <>
           <h2 className='text-lg font-bold mb-4 text-black'>퇴근시간</h2>
           <div className='mt-4 text-2xl text-blue-500 font-bold text-center'>
-            {leaveTime}
+            {leaveTime
+              .format('A HH:mm')
+              .replace('AM', '오전')
+              .replace('PM', '오후')}
           </div>
         </>
       ) : null}
+      {/* 지금으로 부터... */}
+      {arrivalTime &&
+        (workHours || workMinutes) &&
+        (isAfterLeaveTime ? (
+          <h2 className='text-sm font-md mb-4 text-black'>
+            퇴근시간을 초과했습니다. 칼퇴하세요!
+          </h2>
+        ) : (
+          <>
+            <h2 className='text-lg font-bold mb-4 text-black'>
+              지금으로 부터...
+            </h2>
+            <div className='mt-4 text-xl text-blue-500 font-bold text-center'>
+              {dayjs(leaveTime).diff(dayjs(), 'hour')}시간{' '}
+              {dayjs(leaveTime).diff(dayjs(), 'minute') % 60}분{' '}
+              {dayjs(leaveTime).diff(dayjs(), 'second') % 60}초
+            </div>
+            <h2 className='text-md font-bold mb-4 text-black'>남았습니다</h2>
+          </>
+        ))}
     </div>
   );
 };
